@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>随手记 Pro</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <style>
+        :root {
+            --ios-blue: #007AFF;
+            --ios-red: #FF3B30;
+            --ios-green: #34C759;
+            --ios-gray: #8E8E93;
+            --bg-color: #F2F2F7;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { 
+            font-family: -apple-system, system-ui, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0; padding: 15px; padding-top: calc(20px + env(safe-area-inset-top));
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        /* 汇总面板 */
+        .dashboard {
+            width: 100%; max-width: 400px;
+            background: #fff; border-radius: 20px;
+            padding: 20px; margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .dash-row { display: flex; justify-content: space-between; margin-bottom: 15px; }
+        .dash-row:last-child { margin-bottom: 0; padding-top: 15px; border-top: 1px solid #F2F2F7; }
+        
+        .stat-box { flex: 1; text-align: center; }
+        .stat-box:not(:last-child) { border-right: 1px solid #F2F2F7; }
+        
+        .label { font-size: 11px; color: var(--ios-gray); margin-bottom: 4px; text-transform: uppercase; }
+        .value { font-size: 16px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .year-label { font-size: 13px; color: #1c1c1e; font-weight: 600; margin-bottom: 10px; display: block; }
+
+        /* 输入与操作区 */
+        .container { 
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+            width: 100%; max-width: 400px;
+            border-radius: 24px; padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.06);
+        }
+
+        input[type="number"] { 
+            width: 100%; border: none; background: rgba(0,0,0,0.05);
+            padding: 18px; border-radius: 14px; font-size: 32px;
+            text-align: center; font-weight: 700; margin-bottom: 20px; outline: none;
+        }
+
+        .type-container { display: flex; gap: 15px; margin-bottom: 20px; }
+        .type-column { flex: 1; }
+        .type-column h4 { font-size: 12px; color: var(--ios-gray); text-align: center; margin: 0 0 12px 0; }
+
+        .btn-grid { display: grid; gap: 10px; }
+        button { 
+            border: none; border-radius: 12px; padding: 14px 5px;
+            font-size: 15px; font-weight: 600; transition: all 0.1s;
+        }
+        button:active { transform: scale(0.95); opacity: 0.7; }
+        .expense-btn { background-color: #FFE5E5; color: var(--ios-red); }
+        .income-btn { background-color: #E5F9E9; color: var(--ios-green); }
+
+        /* 列表区域 */
+        .history { max-height: 200px; overflow-y: auto; margin-top: 10px; }
+        .item { 
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 0; border-bottom: 0.5px solid #E5E5EA;
+        }
+        .item-info { display: flex; flex-direction: column; }
+        .item-cat { font-size: 15px; font-weight: 500; }
+        .item-time { font-size: 11px; color: var(--ios-gray); }
+        .red { color: var(--ios-red); }
+        .green { color: var(--ios-green); }
+
+        .footer-btns { 
+            display: flex; justify-content: space-between; 
+            margin-top: 15px; padding-top: 15px;
+        }
+        .btn-text { background: none; color: var(--ios-blue); font-size: 14px; font-weight: 400; }
+    </style>
+</head>
+<body>
+
+    <div class="dashboard">
+        <span class="year-label" id="current-year-text">2024 年度汇总</span>
+        <div class="dash-row">
+            <div class="stat-box">
+                <div class="label">年度总支出</div>
+                <div id="year-exp" class="value red">¥0.00</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">年度总收入</div>
+                <div id="year-inc" class="value green">¥0.00</div>
+            </div>
+        </div>
+        <div class="dash-row">
+            <div class="stat-box">
+                <div class="label">本月支出</div>
+                <div id="month-exp" class="value" style="color:#444">¥0.00</div>
+            </div>
+            <div class="stat-box">
+                <div class="label">本月收入</div>
+                <div id="month-inc" class="value" style="color:#444">¥0.00</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <input type="number" id="amount" placeholder="0.00" inputmode="decimal">
+
+        <div class="type-container">
+            <div class="type-column">
+                <h4>支出项目</h4>
+                <div class="btn-grid">
+                    <button class="expense-btn" onclick="add('消费', 'exp')">消费</button>
+                    <button class="expense-btn" onclick="add('必要支出', 'exp')">必要</button>
+                    <button class="expense-btn" onclick="add('投资', 'exp')">投资</button>
+                    <button class="expense-btn" onclick="add('额外支出', 'exp')">额外</button>
+                </div>
+            </div>
+            <div class="type-column">
+                <h4>收入项目</h4>
+                <div class="btn-grid">
+                    <button class="income-btn" onclick="add('工资收入', 'inc')">工资</button>
+                    <button class="income-btn" onclick="add('投资收入', 'inc')">投资</button>
+                    <button class="income-btn" onclick="add('额外收入', 'inc')">额外</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="history" id="history"></div>
+
+        <div class="footer-btns">
+            <button class="btn-text" style="color:var(--ios-gray)" onclick="reset()">清空数据</button>
+            <button class="btn-text" onclick="exportCSV()">导出账单</button>
+        </div>
+    </div>
+
+<script>
+    let records = JSON.parse(localStorage.getItem('ios_bill_v3')) || [];
+
+    function update() {
+        const list = document.getElementById('history');
+        const now = new Date();
+        const curY = now.getFullYear();
+        const curM = now.getMonth();
+        
+        document.getElementById('current-year-text').innerText = `${curY} 年度汇总`;
+
+        let yExp = 0, yInc = 0, mExp = 0, mInc = 0;
+
+        list.innerHTML = records.map(r => {
+            const d = new Date(r.date);
+            const amt = parseFloat(r.amt);
+            
+            // 年度统计
+            if(d.getFullYear() === curY) {
+                r.type === 'exp' ? yExp += amt : yInc += amt;
+                // 月度统计
+                if(d.getMonth() === curM) {
+                    r.type === 'exp' ? mExp += amt : mInc += amt;
+                }
+            }
+
+            return `
+                <div class="item">
+                    <div class="item-info">
+                        <span class="item-cat">${r.cat}</span>
+                        <span class="item-time">${r.showTime}</span>
+                    </div>
+                    <span class="value ${r.type === 'exp' ? 'red' : 'green'}">
+                        ${r.type === 'exp' ? '-' : '+'}${amt.toFixed(2)}
+                    </span>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('year-exp').innerText = `¥${yExp.toFixed(2)}`;
+        document.getElementById('year-inc').innerText = `¥${yInc.toFixed(2)}`;
+        document.getElementById('month-exp').innerText = `¥${mExp.toFixed(2)}`;
+        document.getElementById('month-inc').innerText = `¥${mInc.toFixed(2)}`;
+    }
+
+    function add(cat, type) {
+        const val = document.getElementById('amount').value;
+        if (!val || val <= 0) return;
+
+        const now = new Date();
+        records.unshift({
+            cat, type, amt: val,
+            date: now.toISOString(),
+            showTime: `${now.getMonth()+1}月${now.getDate()}日 ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`
+        });
+
+        localStorage.setItem('ios_bill_v3', JSON.stringify(records));
+        update();
+        document.getElementById('amount').value = '';
+        document.activeElement.blur();
+    }
+
+    function reset() {
+        if(confirm("确定永久删除所有记录吗？")) {
+            records = [];
+            localStorage.removeItem('ios_bill_v3');
+            update();
+        }
+    }
+
+    function exportCSV() {
+        if(!records.length) return;
+        let csv = "\ufeff日期,项目,类型,金额\n" + 
+            records.map(r => `${r.showTime},${r.cat},${r.type==='exp'?'支出':'收入'},${r.amt}`).join("\n");
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `账单_${new Date().getFullYear()}.csv`;
+        a.click();
+    }
+
+    update();
+</script>
+</body>
+</html>
